@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Stress Test Price Atlas — Map + E‑Catalogue</title>
+<link href="https://cdn.maptiler.com/maptiler-sdk-js/v4.1.0/maptiler-sdk.css" rel="stylesheet">
+<script src="https://cdn.maptiler.com/maptiler-sdk-js/v4.1.0/maptiler-sdk.umd.min.js"></script>
+<style>
+:root{--bg:#edf0f1;--paper:#fdfdfb;--ink:#151618;--muted:#77797d;--line:#dde1e3;--green:#12d84c;--teal:#16c985;--cyan:#2a9bb7;--blue:#3a77d6;--violet:#5447f5;--grad:linear-gradient(135deg,#12d84c,#16c985 28%,#2a9bb7 56%,#3a77d6 78%,#5447f5);--shadow:0 28px 80px rgba(28,40,50,.14)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+button,input,select{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+#app{height:100dvh;display:flex;flex-direction:column}
+.topbar{height:58px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:rgba(249,249,248,.90);backdrop-filter:blur(20px) saturate(170%);border-bottom:1px solid rgba(0,0,0,.07);z-index:100}
+.brand{font-size:17px;font-weight:780;letter-spacing:-.025em}.brand span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.modes{display:flex;gap:4px;background:#e9ebed;padding:4px;border-radius:999px}.mode{border:0;background:transparent;border-radius:999px;padding:8px 16px;font-size:12px;font-weight:760;color:#6b6d72}.mode.active{background:#fff;color:#111;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.meta{font-size:10px;color:#85878b}
+.view{flex:1;min-height:0;display:none}.view.active{display:block}
+
+/* MAP */
+.map-view{padding:14px;background:#e9ebed}.map-shell{height:100%;display:grid;grid-template-columns:360px 1fr;background:#fff;border:1px solid #d9dde0;border-radius:30px;overflow:hidden;box-shadow:var(--shadow)}
+.map-side{background:#fafafb;border-right:1px solid #e1e4e6;padding:16px;overflow:auto}.filters{position:sticky;top:0;background:#fafafb;padding-bottom:12px;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:8px}.filters .wide{grid-column:1/-1}.filters input,.filters select{width:100%;border:1px solid #dfe2e5;background:#fff;border-radius:15px;padding:12px 13px;outline:none}
+.map-list{display:grid;gap:9px}.map-item{border:1px solid #e0e3e5;background:#fff;border-radius:18px;padding:14px 15px;transition:.18s;cursor:pointer}.map-item:hover{transform:translateX(4px);border-color:#bdccd8;box-shadow:0 8px 20px rgba(0,0,0,.045)}.map-item .price{font-size:24px;font-weight:850;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}.map-item .provider{font-size:13px;font-weight:750;margin-top:2px}.map-item .loc{font-size:11px;color:#7b7d81;margin-top:3px}
+.map-wrap{position:relative;min-width:0}#locationMap{position:absolute;inset:0}.location-marker{width:18px;height:18px;border-radius:50%;background:var(--grad);border:3px solid white;box-shadow:0 0 0 8px rgba(42,155,183,.1),0 6px 18px rgba(0,0,0,.25)}.map-settings{position:absolute;right:18px;bottom:18px;z-index:10;border:0;border-radius:999px;background:#111;color:#fff;padding:10px 13px;font-size:11px;font-weight:750}.keybox{position:absolute;right:18px;top:18px;z-index:20;width:300px;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border:1px solid #dfe2e5;border-radius:18px;padding:13px;box-shadow:var(--shadow)}.keybox.hidden{display:none}.keybox label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#787a7e;font-weight:780}.keybox input{width:100%;margin-top:7px;padding:10px;border:1px solid #dfe2e5;border-radius:12px}.keyactions{display:flex;gap:7px;margin-top:7px}.keyactions button{border:0;border-radius:999px;padding:8px 11px;font-size:10px;font-weight:750}.save{background:#111;color:#fff}.close{background:#eceef0}
+.popup-card{min-width:250px}.popup-price{font-size:29px;font-weight:850;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}.popup-provider{font-weight:760;font-size:14px;margin-top:4px;color:#111}.popup-loc{font-size:11px;color:#727478;margin-top:2px}.popup-service{font-size:11px;line-height:1.4;margin-top:8px;color:#333}.popup-card a{display:inline-block;margin-top:9px;color:#3375d2;font-size:11px;font-weight:750}
+
+/* SELF-CONTAINED FLIPBOOK — adapted from working GitHub leaf/page pattern */
+.book-view{background:radial-gradient(125% 110% at 50% 5%,#e8ecee,#cbd2d6 98%);position:relative;perspective:1700px;overflow:hidden}
+.book-controls{position:absolute;z-index:80;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(249,249,248,.9);backdrop-filter:blur(16px);border:1px solid rgba(0,0,0,.09);border-radius:999px;padding:6px;box-shadow:0 8px 28px rgba(0,0,0,.10)}.book-controls button{border:0;background:transparent;width:34px;height:34px;border-radius:50%;font-size:19px;color:#555}.book-controls button:hover{background:#eceef0;color:#111}.book-controls button:disabled{opacity:.25}.book-count{min-width:78px;text-align:center;font-size:11px;color:#737579}.book-count b{color:#111}
+.jump{position:absolute;z-index:80;right:18px;top:16px;max-width:300px;padding:9px 12px;border:1px solid rgba(0,0,0,.10);border-radius:999px;background:rgba(249,249,248,.9);backdrop-filter:blur(14px);font-size:11px}
+.book-hint{position:absolute;z-index:70;left:50%;bottom:67px;transform:translateX(-50%);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#76787c;transition:.4s}.book-hint.hide{opacity:0}
+.book-space{position:absolute;inset:0 0 54px;display:flex;align-items:center;justify-content:center}
+.book-zoom{position:relative;width:840px;height:580px;transform-origin:center center;will-change:transform}
+.flipbook{width:420px;height:580px;position:absolute;left:50%;top:0;margin-left:-210px;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.645,.045,.355,1)}
+.flipbook.open{transform:translateX(210px)}.flipbook.finished{transform:translateX(-210px)}
+.flipbook::after{content:"";position:absolute;left:0;bottom:-38px;width:840px;height:38px;background:radial-gradient(50% 50% at 50% 50%,rgba(30,39,47,.30),transparent 72%);filter:blur(8px);pointer-events:none}
+.leaf{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:left center;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.645,.045,.355,1);cursor:pointer}
+.leaf.flipped{transform:rotateY(-180deg)}
+.page{position:absolute;width:100%;height:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;box-sizing:border-box}
+.page.front{transform:rotateY(0deg) translateZ(1px);border-radius:0 10px 10px 0}.page.back{transform:rotateY(180deg) translateZ(1px);border-radius:10px 0 0 10px}
+.inner-page{background:#fffefb;padding:28px 27px;color:#18191b;box-shadow:inset 10px 0 26px rgba(0,0,0,.045),0 0 5px rgba(0,0,0,.12)}.inner-page.back{box-shadow:inset -10px 0 26px rgba(0,0,0,.05),0 0 5px rgba(0,0,0,.12)}
+.cover-page{padding:36px 32px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,#12d84c,#16c985 30%,#2a9bb7 58%,#3a77d6 78%,#5447f5);color:white;box-shadow:inset 11px 0 25px rgba(0,0,0,.18),6px 7px 25px rgba(0,0,0,.22)}.cover-mark{font-size:8px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;opacity:.85}.cover-page h1{font-family:Georgia,"Times New Roman",serif;font-size:52px;line-height:.88;letter-spacing:-.05em;font-weight:500;margin:0}.cover-page h1 span{color:#fff}.cover-page p{font-size:13px;line-height:1.45;color:rgba(255,255,255,.84);max-width:320px;margin:14px 0 0}.cover-foot{display:flex;justify-content:space-between;gap:7px;font-size:8px;color:rgba(255,255,255,.82)}
+.back-cover{padding:36px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#12d84c,#2a9bb7 58%,#5447f5);color:#fff;box-shadow:inset -11px 0 25px rgba(0,0,0,.18)}.back-cover h2{font-family:Georgia,"Times New Roman",serif;font-size:42px;line-height:.95;font-weight:500;margin:22px 0}.back-cover p{font-size:11px;color:rgba(255,255,255,.78)}
+.micro{font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:#7b7d81;font-weight:800}.index-page h2{font-family:Georgia,"Times New Roman",serif;font-size:32px;font-weight:500;letter-spacing:-.035em;margin:8px 0 15px}.toc{display:grid}.toc-row{display:grid;grid-template-columns:24px 1fr 48px;gap:7px;align-items:center;width:100%;border:0;border-bottom:1px solid #e0e1e2;background:transparent;padding:8px 0;text-align:left}.toc-row i{font-size:8px;color:#85868a;font-style:normal}.toc-row b{font-family:Georgia,"Times New Roman",serif;font-size:12px;font-weight:500;line-height:1.15}.toc-row em{font-size:10px;font-style:normal;font-weight:800;text-align:right}.quick-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:15px}.quick-stats div{border:1px solid #e0e2e3;border-radius:10px;padding:9px}.quick-stats span{display:block;font-size:6px;text-transform:uppercase;letter-spacing:.1em;color:#85868a;font-weight:800}.quick-stats b{display:block;font-size:18px;margin-top:3px}
+.provider-title{font-family:Georgia,"Times New Roman",serif;font-size:29px;line-height:.98;letter-spacing:-.04em;font-weight:500;margin:7px 0 5px}.provider-city{font-size:9px;color:#74767a;line-height:1.25}.price-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:19px 0 13px}.big-price{font-size:51px;line-height:.83;font-weight:850;letter-spacing:-.065em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}.service-copy{text-align:right;max-width:180px}.service-copy span{display:block;font-size:6px;text-transform:uppercase;letter-spacing:.11em;color:#85868a;font-weight:800}.service-copy b{display:block;font-size:9px;line-height:1.25;margin-top:3px}.black-rule{height:3px;background:#17181a;margin-bottom:12px}
+.info-columns{display:grid;grid-template-columns:1.08fr .92fr;gap:13px}.info-columns section{border-top:1.5px solid #242527;padding-top:7px}.info-columns h3{font-size:7px;text-transform:uppercase;letter-spacing:.11em;margin:0 0 7px}.contacts{display:grid;gap:4px}.contact-row{display:grid;grid-template-columns:43px 1fr;gap:5px;font-size:7px;line-height:1.3}.contact-row span{color:#88898d}.contact-row b{font-weight:650;overflow-wrap:anywhere}.location-pills{display:flex;flex-wrap:wrap;gap:4px}.location-pill{padding:5px 6px;border-radius:999px;background:#f1f2f3;border:1px solid #e2e3e4;font-size:7px}.info-columns p{font-size:7px;color:#787a7e;line-height:1.4;margin:6px 0 0}.evidence-box{margin-top:10px;padding:8px 9px;border:1px solid #e0e2e3;border-radius:10px;background:#f7f9fa}.evidence-box span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.1em;color:#818287;font-weight:800}.evidence-box b{display:block;font-size:8px;line-height:1.25;margin-top:3px}.evidence-box small{display:block;font-size:6.5px;color:#77797d;margin-top:3px}.page-source{display:inline-block;margin-top:7px;color:#3377d3;font-size:7px;font-weight:750}.page-number{position:absolute;bottom:11px;left:27px;font-family:Georgia,"Times New Roman",serif;font-size:8px;color:#7a7b80}.front .page-number{left:auto;right:27px}
+.proof-page{padding:22px 22px 19px}.proof-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-bottom:1px solid #dedfe0;padding-bottom:8px;margin-bottom:9px}.proof-top h2{font-family:Georgia,"Times New Roman",serif;font-size:20px;line-height:1.02;font-weight:500;margin:4px 0 0}.proof-price{font-size:23px;font-weight:850;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}.proof-wrap{position:relative;display:block;height:493px;background:#eceff1;border:1px solid #d9dcde;overflow:hidden;box-shadow:inset 0 0 0 6px #f8f8f8}.proof-wrap img{width:100%;height:100%;object-fit:cover;object-position:top;display:block;filter:saturate(.92) contrast(.98)}.proof-fallback{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:25px;background:linear-gradient(135deg,#eef8f2,#eef4fa 70%,#f1efff)}.proof-fallback strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:500}.proof-fallback span{display:block;font-size:10px;color:#626469;margin-top:7px;line-height:1.4}.proof-fallback em{display:block;font-style:normal;font-size:8px;color:#3377d3;font-weight:750;margin-top:9px}.proof-caption{position:absolute;left:9px;right:9px;bottom:9px;padding:8px 9px;border-radius:10px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);box-shadow:0 7px 18px rgba(0,0,0,.10)}.proof-caption span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.11em;color:#7c7e82;font-weight:800}.proof-caption b{display:block;font-size:8px;margin-top:2px}
+@media(max-width:900px){.meta{display:none}.map-shell{grid-template-columns:1fr}.map-side{max-height:270px;border-right:0;border-bottom:1px solid #e1e4e6}}
+
+/* ----- v12 catalogue content polish ----- */
+.book-view{background:radial-gradient(125% 110% at 50% 6%,#eff3f5,#d7dde1 98%)}
+.book-zoom{width:840px;height:580px}
+.micro{font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:#7b7d81;font-weight:800}
+.index-page h2,.provider-title,.proof-top h2,.back-cover h2,.cover-page h1{font-family:Georgia,"Times New Roman",serif}
+.provider-page{padding:24px 24px 18px}
+.provider-title{font-size:28px;line-height:.98;letter-spacing:-.04em;font-weight:500;margin:8px 0 5px}
+.provider-city{font-size:9px;color:#6f7176;line-height:1.35}
+.price-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:16px 0 10px}
+.big-price{font-size:50px;line-height:.84;font-weight:850;letter-spacing:-.065em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.service-copy{text-align:right;max-width:180px}
+.service-copy span{display:block;font-size:6px;text-transform:uppercase;letter-spacing:.12em;color:#808287;font-weight:800}
+.service-copy b{display:block;font-size:10px;line-height:1.2;margin-top:4px}
+.page-chip-row{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px}
+.page-chip{padding:5px 7px;border-radius:999px;background:linear-gradient(180deg,#f7fafc,#eff3f6);border:1px solid #dce4eb;font-size:6.5px;font-weight:800;color:#4c5864}
+.black-rule{height:2px;background:#1d1f22;margin:7px 0 10px}
+.snapshot-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.snapshot-card{border:1px solid #e1e4e7;border-radius:10px;padding:8px 9px;background:linear-gradient(180deg,#fbfcfd,#f5f8fa)}
+.snapshot-card span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.1em;color:#82858a;font-weight:800}
+.snapshot-card b{display:block;font-size:8px;line-height:1.28;margin-top:3px}
+.info-columns{display:grid;grid-template-columns:1.08fr .92fr;gap:13px}
+.info-columns section{border-top:1.5px solid #242527;padding-top:7px}
+.info-columns h3{font-size:7px;text-transform:uppercase;letter-spacing:.11em;margin:0 0 7px}
+.contacts{display:grid;gap:4px}
+.contact-row{display:grid;grid-template-columns:43px 1fr;gap:5px;font-size:7px;line-height:1.3}
+.contact-row span{color:#88898d}
+.contact-row b{font-weight:650;overflow-wrap:anywhere}
+.location-pills{display:flex;flex-wrap:wrap;gap:4px}
+.location-pill{padding:5px 6px;border-radius:999px;background:#f1f3f4;border:1px solid #e2e5e7;font-size:7px}
+.info-columns p{font-size:7px;color:#787a7e;line-height:1.4;margin:6px 0 0}
+.evidence-box{margin-top:10px;padding:8px 9px;border:1px solid #dbe2e8;border-radius:10px;background:linear-gradient(135deg,#f7fbf8,#f6f9fc 68%,#f6f4ff)}
+.evidence-box span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.1em;color:#818287;font-weight:800}
+.evidence-box b{display:block;font-size:8px;line-height:1.25;margin-top:3px}
+.evidence-box small{display:block;font-size:6.5px;color:#77797d;margin-top:3px}
+.page-source{display:inline-block;margin-top:7px;color:#3377d3;font-size:7px;font-weight:750}
+.page-number{position:absolute;bottom:11px;left:27px;font-family:Georgia,"Times New Roman",serif;font-size:8px;color:#7a7b80}
+.front .page-number{left:auto;right:27px}
+
+.proof-page{padding:20px 20px 18px}
+.proof-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+.proof-top h2{font-size:20px;line-height:1.02;font-weight:500;margin:4px 0 0}
+.proof-price{font-size:23px;font-weight:850;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.proof-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.proof-pill{padding:5px 7px;border-radius:999px;background:#f2f4f6;border:1px solid #dde3e8;font-size:6.5px;color:#596673;font-weight:780}
+.proof-wrap{position:relative;display:block;height:440px;background:linear-gradient(180deg,#eef2f5,#e8edf0);border:1px solid #d9dcde;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 0 6px #f8f8f8}
+.browser-bar{height:26px;display:flex;align-items:center;gap:10px;padding:0 10px;background:linear-gradient(180deg,#f6f7f8,#eaedf0);border-bottom:1px solid #d9dee2}
+.browser-dots{display:flex;gap:4px}
+.browser-dots i{display:block;width:7px;height:7px;border-radius:50%}
+.browser-dots i:nth-child(1){background:#ff6058}.browser-dots i:nth-child(2){background:#ffbd2e}.browser-dots i:nth-child(3){background:#28c840}
+.browser-domain{font-size:7px;color:#6e7277;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proof-image-stage{position:absolute;inset:26px 0 62px;display:flex;align-items:flex-start;justify-content:center;background:#fff}
+.proof-wrap img{width:100%;height:100%;object-fit:contain;object-position:top center;display:block;background:#fff;filter:saturate(.95) contrast(1.01)}
+.proof-fallback{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:25px;background:linear-gradient(135deg,#eef8f2,#eef4fa 70%,#f1efff)}
+.proof-fallback strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:500}
+.proof-fallback span{display:block;font-size:10px;color:#626469;margin-top:7px;line-height:1.4}
+.proof-fallback em{display:block;font-style:normal;font-size:8px;color:#3377d3;font-weight:750;margin-top:9px}
+.proof-caption{position:absolute;left:10px;right:10px;bottom:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.93);backdrop-filter:blur(12px);box-shadow:0 7px 18px rgba(0,0,0,.10)}
+.proof-caption span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.11em;color:#7c7e82;font-weight:800}
+.proof-caption b{display:block;font-size:8px;margin-top:2px}
+.proof-caption small{display:block;font-size:6.5px;color:#767a7e;margin-top:2px}
+.proof-notes{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.proof-note{border:1px solid #e1e4e7;border-radius:10px;padding:8px 9px;background:#fafcfd}
+.proof-note span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.1em;color:#82858a;font-weight:800}
+.proof-note b{display:block;font-size:7.5px;line-height:1.25;margin-top:3px}
+
+@media (max-width:960px){
+  .proof-wrap{height:420px}
+}
+
+
+/* v13 — editorial evidence-book pages; paper, not UI */
+.inner-page{background:#fffefb}
+.editorial-provider{padding:30px 28px 22px;background:linear-gradient(90deg,rgba(18,216,76,.018),transparent 26%),#fffefb}
+.editorial-kicker{font-size:6.5px;text-transform:uppercase;letter-spacing:.15em;color:#7a7c80;font-weight:800}
+.editorial-provider-title{font-family:Georgia,"Times New Roman",serif;font-size:30px;line-height:.96;letter-spacing:-.04em;font-weight:500;margin:8px 0 5px}
+.editorial-deck{font-size:8.5px;color:#77797d;line-height:1.3}
+.editorial-price-block{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:end;margin:22px 0 14px}
+.editorial-price{font-size:55px;line-height:.82;font-weight:850;letter-spacing:-.07em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.editorial-price-copy{text-align:right}.editorial-price-copy span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.12em;color:#808287;font-weight:800}.editorial-price-copy strong{display:block;font-size:9px;line-height:1.25;margin-top:4px}
+.editorial-rule{height:2px;background:#161719;margin:0 0 16px}
+.editorial-quote{margin:0 0 17px;padding:0 0 0 13px;border-left:3px solid #16c985}.editorial-quote span{display:block;font-size:5.5px;text-transform:uppercase;letter-spacing:.12em;color:#7d7f83;font-weight:800}.editorial-quote p{font-family:Georgia,"Times New Roman",serif;font-size:14px;line-height:1.3;margin:5px 0 0;color:#292a2c}
+.editorial-columns{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}.editorial-columns section{border-top:1px solid #222;padding-top:8px}.editorial-columns h3{font-size:6px;text-transform:uppercase;letter-spacing:.13em;margin:0 0 8px;font-weight:800}
+.editorial-columns dl{margin:0}.editorial-columns dl div{display:grid;grid-template-columns:46px 1fr;gap:5px;padding:3px 0;border-bottom:1px solid #ececeb;font-size:7px;line-height:1.3}.editorial-columns dt{color:#8a8b8f}.editorial-columns dd{margin:0;font-weight:650;overflow-wrap:anywhere}
+.editorial-locations{font-size:8px;line-height:1.55;margin:0;font-weight:650}.editorial-footnote{font-size:7px;color:#77797d;line-height:1.35;margin:6px 0 0}.editorial-second-head{margin-top:14px!important}.editorial-tier{font-family:Georgia,"Times New Roman",serif;font-size:10px;margin:0;color:#27282a}
+.editorial-source-line{position:absolute;left:28px;right:28px;bottom:30px;border-top:1px solid #dcdedc;padding-top:7px;display:flex;justify-content:space-between;gap:10px;font-size:6.5px;color:#77797d}.editorial-source-line a{color:#3377d3;font-weight:750}
+
+.editorial-proof{padding:26px 24px 20px;background:#fffefb}.proof-editorial-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.proof-editorial-head h2{font-family:Georgia,"Times New Roman",serif;font-size:21px;line-height:1;font-weight:500;margin:6px 0 0}.proof-editorial-price{font-size:25px;font-weight:850;letter-spacing:-.04em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.proof-context-line{display:flex;justify-content:space-between;gap:10px;margin:10px 0 11px;padding-bottom:8px;border-bottom:1px solid #d9dbda;font-size:7px;color:#727478}
+.source-clipping{display:block;position:relative;margin:0 auto;width:96%;height:380px}.clipping-paper{position:absolute;inset:0;background:#f7f5ef;padding:9px;box-shadow:0 13px 30px rgba(22,29,34,.12);transform:rotate(-.35deg);border:1px solid #dedbd4}.clipping-paper:before{content:"";position:absolute;inset:5px;border:1px solid rgba(20,20,20,.06);pointer-events:none}
+.clipping-paper img{width:100%;height:100%;display:block;object-fit:contain;object-position:top center;background:#fff;filter:saturate(.92) contrast(1.02)}
+.proof-fallback{display:none;position:absolute;inset:9px;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,#f1f8f3,#f1f5f9)}.proof-fallback strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:500}.proof-fallback span{display:block;font-size:9px;color:#65676b;margin-top:7px}.proof-fallback em{display:block;font-style:normal;font-size:7px;color:#3377d3;font-weight:750;margin-top:8px}
+.proof-editorial-caption{display:grid;grid-template-columns:84px 1fr;gap:12px;margin-top:13px;padding-top:9px;border-top:1px solid #1f2022}.caption-no{font-size:5.5px;text-transform:uppercase;letter-spacing:.13em;font-weight:800;color:#7d7f83}.caption-main{font-family:Georgia,"Times New Roman",serif;font-size:9px;line-height:1.42;color:#353638}.caption-main b{display:block;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Arial,sans-serif;font-size:7px;margin-top:4px}
+.proof-margin-note{position:absolute;left:24px;right:24px;bottom:28px;display:grid;grid-template-columns:40px 1fr auto;gap:7px;border-top:1px solid #dcdedc;padding-top:6px;font-size:6px;align-items:center}.proof-margin-note span{text-transform:uppercase;letter-spacing:.12em;color:#838589;font-weight:800}.proof-margin-note b{font-weight:650}.proof-margin-note a{color:#3377d3;font-weight:750}
+/* remove the old screen/dashboard vocabulary inside pages */
+.browser-bar,.proof-meta,.proof-notes,.page-chip-row,.snapshot-grid,.proof-caption{display:none!important}
+
+</style>
+</head>
+<body>
+<div id="app">
+<header class="topbar"><div class="brand">Stress Test <span>Price Atlas</span></div><div class="modes"><button class="mode active" id="mapMode">Map</button><button class="mode" id="bookMode">E‑Catalogue</button></div><div class="meta" id="meta">MapTiler location explorer</div></header>
+
+<main class="view map-view active" id="mapView">
+<div class="map-shell"><aside class="map-side"><div class="filters"><input class="wide" id="mapSearch" placeholder="Search provider, city, ZIP"><select id="mapState"><option value="">All states</option></select><select id="mapPrice"><option value="">All prices</option><option value="100">≤ $100</option><option value="150">≤ $150</option><option value="250">≤ $250</option><option value="400">≤ $400</option></select></div><div class="map-list" id="mapList"></div></aside><div class="map-wrap"><div id="locationMap"></div><div class="keybox hidden" id="keybox"><label>MapTiler API key</label><input id="keyInput" placeholder="Paste your MapTiler key"><div class="keyactions"><button class="save" id="saveKey">Use MapTiler</button><button class="close" id="closeKey">Close</button></div></div><button class="map-settings" id="mapSettings">MapTiler settings</button></div></div>
+</main>
+
+
+
+<main class="view book-view" id="bookView">
+<select class="jump" id="providerJump"><option value="">Jump to provider…</option><option value="2">Pham Cardiovascular Center — $72</option><option value="3">Advanced Cardiology — $100</option><option value="4">Daffodil Primary Care &amp; Cardio Renal Clinic — $100</option><option value="5">Texas One Primary Care — $100</option><option value="6">Trinity Heart and Vascular Group — $125</option><option value="7">Tampa Heart — $150</option><option value="8">Cardiology Associates of West Texas — $150</option><option value="9">Empowered Health Institute — $200</option><option value="10">Capital Area Cardiovascular Associates — $210</option><option value="11">Cardiovascular Experts of PA — $210</option><option value="12">Wisconsin Cardiology Associates — $300</option><option value="13">DoctorsCGA — $400</option><option value="14">Athletic Heart SF — $500</option></select>
+<div class="book-space" id="bookSpace"><div class="book-zoom" id="bookZoom"><div class="flipbook" id="flipbook">
+<div class="leaf" data-leaf="0">
+  <div class="page front cover-page">
+    <div class="cover-mark">Direct posted pricing · CPT 93015 treadmill-only</div>
+    <div><h1>Stress Test<br><span>Price Atlas.</span></h1><p>An editorial evidence catalogue of published treadmill stress-test prices, direct provider contacts, clinic footprints, and source documentation.</p></div>
+    <div class="cover-foot"><b>15 verified locations</b><b>$72–$500</b><b>13 provider organizations</b></div>
+  </div>
+  <div class="page back inner-page index-page"><div class="micro">Catalogue index · part one</div><h2>Provider index.</h2><div class="toc"><button class="toc-row" data-spread="2"><i>01</i><b>Pham Cardiovascular Center</b><em>$72</em></button><button class="toc-row" data-spread="3"><i>02</i><b>Advanced Cardiology</b><em>$100</em></button><button class="toc-row" data-spread="4"><i>03</i><b>Daffodil Primary Care &amp; Cardio Renal Clinic</b><em>$100</em></button><button class="toc-row" data-spread="5"><i>04</i><b>Texas One Primary Care</b><em>$100</em></button><button class="toc-row" data-spread="6"><i>05</i><b>Trinity Heart and Vascular Group</b><em>$125</em></button><button class="toc-row" data-spread="7"><i>06</i><b>Tampa Heart</b><em>$150</em></button><button class="toc-row" data-spread="8"><i>07</i><b>Cardiology Associates of West Texas</b><em>$150</em></button></div><div class="page-number">1</div></div>
+</div>
+<div class="leaf" data-leaf="1">
+  <div class="page front inner-page index-page"><div class="micro">Catalogue index · part two</div><h2>Price index.</h2><div class="toc"><button class="toc-row" data-spread="9"><i>08</i><b>Empowered Health Institute</b><em>$200</em></button><button class="toc-row" data-spread="10"><i>09</i><b>Capital Area Cardiovascular Associates</b><em>$210</em></button><button class="toc-row" data-spread="11"><i>10</i><b>Cardiovascular Experts of PA</b><em>$210</em></button><button class="toc-row" data-spread="12"><i>11</i><b>Wisconsin Cardiology Associates</b><em>$300</em></button><button class="toc-row" data-spread="13"><i>12</i><b>DoctorsCGA</b><em>$400</em></button><button class="toc-row" data-spread="14"><i>13</i><b>Athletic Heart SF</b><em>$500</em></button></div><div class="quick-stats"><div><span>Lowest</span><b>$72</b></div><div><span>Median</span><b>$150</b></div><div><span>Highest</span><b>$500</b></div><div><span>Provider files</span><b>13</b></div></div><div class="page-number">2</div></div>
+  
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 01</div>
+  <h2 class="editorial-provider-title">Pham Cardiovascular Center</h2>
+  <div class="editorial-deck">Jacksonville, FL 32216</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$72</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Treadmill Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Strong CPT 93015 match — plain treadmill</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(904) 513-3179</dd></div>
+        <div><dt>Fax</dt><dd>(904) 337-1641</dd></div>
+        <div><dt>Email</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Address</dt><dd>8075 Gate Parkway West, Suite 302, Jacksonville, FL 32216</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Jacksonville, FL 32216</p>
+      <p class="editorial-footnote">1 public clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Open self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>phamcvcenter.com</span><a href="https://www.phamcvcenter.com/insurances" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">3</div>
+</div>
+</div><div class="leaf" data-leaf="2">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 01</div><h2>Pham Cardiovascular Center</h2></div>
+    <div class="proof-editorial-price">$72</div>
+  </div>
+  <div class="proof-context-line"><span>Treadmill Stress Test</span><span>Jacksonville, FL 32216</span></div>
+
+  <a class="source-clipping" href="https://www.phamcvcenter.com/insurances" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.phamcvcenter.com%2Finsurances?w=1800" alt="Published pricing source for Pham Cardiovascular Center"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Pham Cardiovascular Center</strong><span>Treadmill Stress Test — $72</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Treadmill Stress Test · $72</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>phamcvcenter.com</b><a href="https://www.phamcvcenter.com/insurances" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">4</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 02</div>
+  <h2 class="editorial-provider-title">Advanced Cardiology</h2>
+  <div class="editorial-deck">Sugar Land, TX 77479 · Katy, TX 77494</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$100</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Strong CPT 93015 match — exercise stress</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(713) 258-6111</dd></div>
+        <div><dt>Fax</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Email</dt><dd>info@advcardiologytx.com</dd></div>
+        <div><dt>Address</dt><dd>7102 Tarrington Ave, Suite 505, Sugar Land, TX 77479</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Sugar Land, TX 77479<br>Katy, TX 77494</p>
+      <p class="editorial-footnote">2 public clinic locations.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Open self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>advcardiologytx.com</span><a href="https://advcardiologytx.com/self-pay-cardiology-care-houston/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">5</div>
+</div></div><div class="leaf" data-leaf="3">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 02</div><h2>Advanced Cardiology</h2></div>
+    <div class="proof-editorial-price">$100</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Stress Test</span><span>Sugar Land, TX 77479</span></div>
+
+  <a class="source-clipping" href="https://advcardiologytx.com/self-pay-cardiology-care-houston/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fadvcardiologytx.com%2Fself-pay-cardiology-care-houston%2F?w=1800" alt="Published pricing source for Advanced Cardiology"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Advanced Cardiology</strong><span>Exercise Stress Test — $100</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Stress Test · $100</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>advcardiologytx.com</b><a href="https://advcardiologytx.com/self-pay-cardiology-care-houston/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">6</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 03</div>
+  <h2 class="editorial-provider-title">Daffodil Primary Care &amp; Cardio Renal Clinic</h2>
+  <div class="editorial-deck">Frisco, TX 75033 · McKinney, TX 75070</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$100</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Strong CPT 93015 match — exercise stress</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(469) 649-9968</dd></div>
+        <div><dt>Fax</dt><dd>(469) 649-9969</dd></div>
+        <div><dt>Email</dt><dd>Email available on provider site</dd></div>
+        <div><dt>Address</dt><dd>4300 Punjab Way, Building 1, Unit 160, Frisco, TX 75033</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Frisco, TX 75033<br>McKinney, TX 75070</p>
+      <p class="editorial-footnote">2 public clinic locations.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Cash pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>daffodilclinic.com</span><a href="https://www.daffodilclinic.com/cash-pay/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">7</div>
+</div></div><div class="leaf" data-leaf="4">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 03</div><h2>Daffodil Primary Care &amp; Cardio Renal Clinic</h2></div>
+    <div class="proof-editorial-price">$100</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Stress Test</span><span>Frisco, TX 75033</span></div>
+
+  <a class="source-clipping" href="https://www.daffodilclinic.com/cash-pay/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.daffodilclinic.com%2Fcash-pay%2F?w=1800" alt="Published pricing source for Daffodil Primary Care &amp; Cardio Renal Clinic"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Daffodil Primary Care &amp; Cardio Renal Clinic</strong><span>Exercise Stress Test — $100</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Stress Test · $100</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>daffodilclinic.com</b><a href="https://www.daffodilclinic.com/cash-pay/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">8</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 04</div>
+  <h2 class="editorial-provider-title">Texas One Primary Care</h2>
+  <div class="editorial-deck">McKinney, TX 75070</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$100</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Strong CPT 93015 match — exercise stress</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>972-752-8118</dd></div>
+        <div><dt>Fax</dt><dd>972-752-8338</dd></div>
+        <div><dt>Email</dt><dd>info@texasoneprimarycare.com</dd></div>
+        <div><dt>Address</dt><dd>8720 Silverado Trail, Suite 3D, McKinney, TX 75070</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">McKinney, TX 75070</p>
+      <p class="editorial-footnote">1 public clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Cash pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>texasoneprimarycare.com</span><a href="https://www.texasoneprimarycare.com/copy-of-services" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">9</div>
+</div></div><div class="leaf" data-leaf="5">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 04</div><h2>Texas One Primary Care</h2></div>
+    <div class="proof-editorial-price">$100</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Stress Test</span><span>McKinney, TX 75070</span></div>
+
+  <a class="source-clipping" href="https://www.texasoneprimarycare.com/copy-of-services" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.texasoneprimarycare.com%2Fcopy-of-services?w=1800" alt="Published pricing source for Texas One Primary Care"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Texas One Primary Care</strong><span>Exercise Stress Test — $100</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Stress Test · $100</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>texasoneprimarycare.com</b><a href="https://www.texasoneprimarycare.com/copy-of-services" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">10</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 05</div>
+  <h2 class="editorial-provider-title">Trinity Heart and Vascular Group</h2>
+  <div class="editorial-deck">Greeneville, TN 37745</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$125</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Treadmill Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Very strong CPT 93015 match — flat treadmill test price</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(423) 588-5660</dd></div>
+        <div><dt>Fax</dt><dd>(423) 609-7905</dd></div>
+        <div><dt>Email</dt><dd>thvg.jane@trinityheartandvasculargroup.com</dd></div>
+        <div><dt>Address</dt><dd>1231 Tusculum Boulevard, Upper Level, Greeneville, TN 37745</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Greeneville, TN 37745</p>
+      <p class="editorial-footnote">2 public clinic locations.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>trinityheartandvasculargroup.com</span><a href="https://trinityheartandvasculargroup.com/price-comparison-chart/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">11</div>
+</div></div><div class="leaf" data-leaf="6">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 05</div><h2>Trinity Heart and Vascular Group</h2></div>
+    <div class="proof-editorial-price">$125</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Treadmill Test</span><span>Greeneville, TN 37745</span></div>
+
+  <a class="source-clipping" href="https://trinityheartandvasculargroup.com/price-comparison-chart/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Ftrinityheartandvasculargroup.com%2Fprice-comparison-chart%2F?w=1800" alt="Published pricing source for Trinity Heart and Vascular Group"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Trinity Heart and Vascular Group</strong><span>Exercise Treadmill Test — $125</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Treadmill Test · $125</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>trinityheartandvasculargroup.com</b><a href="https://trinityheartandvasculargroup.com/price-comparison-chart/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">12</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 06</div>
+  <h2 class="editorial-provider-title">Tampa Heart</h2>
+  <div class="editorial-deck">Tampa, FL 33607</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$150</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Electrocardiogram (EKG) treadmill stress test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Very strong CPT 93015 match — treadmill + ECG</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(813) 873-0000</dd></div>
+        <div><dt>Fax</dt><dd>813-873-3659</dd></div>
+        <div><dt>Email</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Address</dt><dd>2727 W Dr Martin Luther King Jr Blvd #800, Tampa, FL 33607</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Tampa, FL 33607</p>
+      <p class="editorial-footnote">1 public clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Uninsured / self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>tampa-heart.com</span><a href="https://tampa-heart.com/self-pay-cash-price-uninsured-patients/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">13</div>
+</div></div><div class="leaf" data-leaf="7">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 06</div><h2>Tampa Heart</h2></div>
+    <div class="proof-editorial-price">$150</div>
+  </div>
+  <div class="proof-context-line"><span>Electrocardiogram (EKG) treadmill stress test</span><span>Tampa, FL 33607</span></div>
+
+  <a class="source-clipping" href="https://tampa-heart.com/self-pay-cash-price-uninsured-patients/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Ftampa-heart.com%2Fself-pay-cash-price-uninsured-patients%2F?w=1800" alt="Published pricing source for Tampa Heart"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Tampa Heart</strong><span>Electrocardiogram (EKG) treadmill stress test — $150</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Electrocardiogram (EKG) treadmill stress test · $150</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>tampa-heart.com</b><a href="https://tampa-heart.com/self-pay-cash-price-uninsured-patients/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">14</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 07</div>
+  <h2 class="editorial-provider-title">Cardiology Associates of West Texas</h2>
+  <div class="editorial-deck">San Angelo, TX 76904</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$150</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Stress Test - Walking Treadmill</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Strong CPT 93015 match — walking treadmill</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(325) 944-1240</dd></div>
+        <div><dt>Fax</dt><dd>325-944-8616</dd></div>
+        <div><dt>Email</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Address</dt><dd>3180 Executive Dr #102, San Angelo, TX 76904</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">San Angelo, TX 76904</p>
+      <p class="editorial-footnote">1 public cardiology clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Cash price</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>cardiowesttexas.com</span><a href="https://www.cardiowesttexas.com/testing" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">15</div>
+</div></div><div class="leaf" data-leaf="8">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 07</div><h2>Cardiology Associates of West Texas</h2></div>
+    <div class="proof-editorial-price">$150</div>
+  </div>
+  <div class="proof-context-line"><span>Stress Test - Walking Treadmill</span><span>San Angelo, TX 76904</span></div>
+
+  <a class="source-clipping" href="https://www.cardiowesttexas.com/testing" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.cardiowesttexas.com%2Ftesting?w=1800" alt="Published pricing source for Cardiology Associates of West Texas"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Cardiology Associates of West Texas</strong><span>Stress Test - Walking Treadmill — $150</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Stress Test - Walking Treadmill · $150</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>cardiowesttexas.com</b><a href="https://www.cardiowesttexas.com/testing" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">16</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 08</div>
+  <h2 class="editorial-provider-title">Empowered Health Institute</h2>
+  <div class="editorial-deck">Kennewick, WA 99336</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$200</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Probable CPT 93015 match — exercise test; code not posted</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(509) 392-7047</dd></div>
+        <div><dt>Fax</dt><dd>509-436-1944</dd></div>
+        <div><dt>Email</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Address</dt><dd>8108 W Grandridge Blvd, Kennewick, WA 99336</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Kennewick, WA 99336</p>
+      <p class="editorial-footnote">1 public clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A- · Existing Empowered patients</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>empoweredhealthinstitute.com</span><a href="https://empoweredhealthinstitute.com/proactive-cardiovascular-testing/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">17</div>
+</div></div><div class="leaf" data-leaf="9">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 08</div><h2>Empowered Health Institute</h2></div>
+    <div class="proof-editorial-price">$200</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Stress Test</span><span>Kennewick, WA 99336</span></div>
+
+  <a class="source-clipping" href="https://empoweredhealthinstitute.com/proactive-cardiovascular-testing/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fempoweredhealthinstitute.com%2Fproactive-cardiovascular-testing%2F?w=1800" alt="Published pricing source for Empowered Health Institute"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Empowered Health Institute</strong><span>Exercise Stress Test — $200</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Stress Test · $200</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>empoweredhealthinstitute.com</b><a href="https://empoweredhealthinstitute.com/proactive-cardiovascular-testing/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">18</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 09</div>
+  <h2 class="editorial-provider-title">Capital Area Cardiovascular Associates</h2>
+  <div class="editorial-deck">Camp Hill, PA 17011</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$210</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Treadmill (only) stress test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Very strong CPT 93015 match — treadmill only</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>223-225-1120</dd></div>
+        <div><dt>Fax</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Email</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Address</dt><dd>875 Poplar Church Rd, Suite 300, Camp Hill, PA 17011</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Camp Hill, PA 17011</p>
+      <p class="editorial-footnote">2 practice locations referenced publicly.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>care-cardiology.com</span><a href="https://www.care-cardiology.com/fees/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">19</div>
+</div></div><div class="leaf" data-leaf="10">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 09</div><h2>Capital Area Cardiovascular Associates</h2></div>
+    <div class="proof-editorial-price">$210</div>
+  </div>
+  <div class="proof-context-line"><span>Treadmill (only) stress test</span><span>Camp Hill, PA 17011</span></div>
+
+  <a class="source-clipping" href="https://www.care-cardiology.com/fees/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.care-cardiology.com%2Ffees%2F?w=1800" alt="Published pricing source for Capital Area Cardiovascular Associates"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Capital Area Cardiovascular Associates</strong><span>Treadmill (only) stress test — $210</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Treadmill (only) stress test · $210</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>care-cardiology.com</b><a href="https://www.care-cardiology.com/fees/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">20</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 10</div>
+  <h2 class="editorial-provider-title">Cardiovascular Experts of PA</h2>
+  <div class="editorial-deck">Camp Hill, PA 17011</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$210</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>CPT 93015 Treadmill (Only) Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>EXPLICIT CPT 93015</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(717) 727-0480</dd></div>
+        <div><dt>Fax</dt><dd>(717) 327-4613</dd></div>
+        <div><dt>Email</dt><dd>info@cardiovascularexperts.com</dd></div>
+        <div><dt>Address</dt><dd>3040 Market St, Camp Hill, PA 17011</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Camp Hill, PA 17011</p>
+      <p class="editorial-footnote">1 public headquarters location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A+ · Self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>cardiovascularexperts.com</span><a href="https://cardiovascularexperts.com/pricing/" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">21</div>
+</div></div><div class="leaf" data-leaf="11">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 10</div><h2>Cardiovascular Experts of PA</h2></div>
+    <div class="proof-editorial-price">$210</div>
+  </div>
+  <div class="proof-context-line"><span>CPT 93015 Treadmill (Only) Stress Test</span><span>Camp Hill, PA 17011</span></div>
+
+  <a class="source-clipping" href="https://cardiovascularexperts.com/pricing/" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fcardiovascularexperts.com%2Fpricing%2F?w=1800" alt="Published pricing source for Cardiovascular Experts of PA"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Cardiovascular Experts of PA</strong><span>CPT 93015 Treadmill (Only) Stress Test — $210</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>CPT 93015 Treadmill (Only) Stress Test · $210</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>cardiovascularexperts.com</b><a href="https://cardiovascularexperts.com/pricing/" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">22</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 11</div>
+  <h2 class="editorial-provider-title">Wisconsin Cardiology Associates</h2>
+  <div class="editorial-deck">Mequon, WI 53092</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$300</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Treadmill Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Very strong CPT 93015 match — exercise treadmill</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>414-207-4333</dd></div>
+        <div><dt>Fax</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Email</dt><dd>info@wicardiology.com</dd></div>
+        <div><dt>Address</dt><dd>11725 N Port Washington Road, Suite 250, Mequon, WI 53092</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Mequon, WI 53092</p>
+      <p class="editorial-footnote">1 public clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Direct-pay cash</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>wicardiology.com</span><a href="https://www.wicardiology.com/fee-schedule" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">23</div>
+</div></div><div class="leaf" data-leaf="12">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 11</div><h2>Wisconsin Cardiology Associates</h2></div>
+    <div class="proof-editorial-price">$300</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Treadmill Stress Test</span><span>Mequon, WI 53092</span></div>
+
+  <a class="source-clipping" href="https://www.wicardiology.com/fee-schedule" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.wicardiology.com%2Ffee-schedule?w=1800" alt="Published pricing source for Wisconsin Cardiology Associates"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Wisconsin Cardiology Associates</strong><span>Exercise Treadmill Stress Test — $300</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Treadmill Stress Test · $300</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>wicardiology.com</b><a href="https://www.wicardiology.com/fee-schedule" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">24</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 12</div>
+  <h2 class="editorial-provider-title">DoctorsCGA</h2>
+  <div class="editorial-deck">Plantation, FL 33313</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$400</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Exercise Treadmill Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Strong CPT 93015 match — treadmill</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>754-778-6706</dd></div>
+        <div><dt>Fax</dt><dd>754-778-6935</dd></div>
+        <div><dt>Email</dt><dd>info@doctorscga.com</dd></div>
+        <div><dt>Address</dt><dd>6738 W Sunrise Blvd, Suite 101, Plantation, FL 33313</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">Plantation, FL 33313</p>
+      <p class="editorial-footnote">1 public cardiology office.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Self-pay</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>doctorscga.com</span><a href="https://doctorscga.com/self-pay-pricing" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">25</div>
+</div></div><div class="leaf" data-leaf="13">
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 12</div><h2>DoctorsCGA</h2></div>
+    <div class="proof-editorial-price">$400</div>
+  </div>
+  <div class="proof-context-line"><span>Exercise Treadmill Stress Test</span><span>Plantation, FL 33313</span></div>
+
+  <a class="source-clipping" href="https://doctorscga.com/self-pay-pricing" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fdoctorscga.com%2Fself-pay-pricing?w=1800" alt="Published pricing source for DoctorsCGA"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>DoctorsCGA</strong><span>Exercise Treadmill Stress Test — $400</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Exercise Treadmill Stress Test · $400</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>doctorscga.com</b><a href="https://doctorscga.com/self-pay-pricing" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">26</div>
+</div>
+<div class="page back inner-page editorial-provider">
+  <div class="editorial-kicker">Provider evidence file · 13</div>
+  <h2 class="editorial-provider-title">Athletic Heart SF</h2>
+  <div class="editorial-deck">San Francisco, CA 94109</div>
+
+  <div class="editorial-price-block">
+    <div class="editorial-price">$500</div>
+    <div class="editorial-price-copy"><span>Published self-pay price</span><strong>Treadmill Stress Test</strong></div>
+  </div>
+
+  <div class="editorial-rule"></div>
+  <div class="editorial-quote"><span>Registry finding</span><p>Very strong CPT 93015 match — treadmill + ECG monitoring</p></div>
+
+  <div class="editorial-columns">
+    <section>
+      <h3>Direct contact</h3>
+      <dl>
+        <div><dt>Phone</dt><dd>(415) 567-1014</dd></div>
+        <div><dt>Fax</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Email</dt><dd>Not publicly posted</dd></div>
+        <div><dt>Address</dt><dd>2000 Van Ness Avenue, Suite 208, San Francisco, CA 94109</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h3>Clinic footprint</h3>
+      <p class="editorial-locations">San Francisco, CA 94109</p>
+      <p class="editorial-footnote">1 public clinic location.</p>
+      <h3 class="editorial-second-head">Evidence tier</h3>
+      <p class="editorial-tier">Tier A · Direct pay / out-of-network</p>
+    </section>
+  </div>
+
+  <div class="editorial-source-line"><span>athleticheartsf.com</span><a href="https://www.athleticheartsf.com/services/treadmill-stress-test" target="_blank" rel="noopener">Open original source ↗</a></div>
+  <div class="page-number">27</div>
+</div></div>
+<div class="leaf" data-leaf="14">
+  
+<div class="page front inner-page editorial-proof">
+  <div class="proof-editorial-head">
+    <div><div class="editorial-kicker">Published source · 13</div><h2>Athletic Heart SF</h2></div>
+    <div class="proof-editorial-price">$500</div>
+  </div>
+  <div class="proof-context-line"><span>Treadmill Stress Test</span><span>San Francisco, CA 94109</span></div>
+
+  <a class="source-clipping" href="https://www.athleticheartsf.com/services/treadmill-stress-test" target="_blank" rel="noopener">
+    <div class="clipping-paper">
+      <img src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.athleticheartsf.com%2Fservices%2Ftreadmill-stress-test?w=1800" alt="Published pricing source for Athletic Heart SF"
+           onerror="this.style.display='none';this.parentElement.querySelector('.proof-fallback').style.display='flex'">
+      <div class="proof-fallback"><div><strong>Athletic Heart SF</strong><span>Treadmill Stress Test — $500</span><em>Open original source ↗</em></div></div>
+    </div>
+  </a>
+
+  <div class="proof-editorial-caption">
+    <div class="caption-no">SOURCE EVIDENCE</div>
+    <div class="caption-main">Published provider pricing page showing the treadmill stress-test offering.<b>Treadmill Stress Test · $500</b></div>
+  </div>
+
+  <div class="proof-margin-note"><span>Source</span><b>athleticheartsf.com</b><a href="https://www.athleticheartsf.com/services/treadmill-stress-test" target="_blank" rel="noopener">View live page ↗</a></div>
+  <div class="page-number">28</div>
+</div>
+  <div class="page back back-cover"><div class="cover-mark">Registry close</div><h2>Direct posted.<br>Mapped and documented.</h2><p>15 verified CPT 93015 treadmill-only locations tied to direct provider pricing sources.</p></div>
+</div></div></div></div>
+<div class="book-hint" id="bookHint">Click the right page to turn · click the left page to go back</div>
+<div class="book-controls"><button id="prev">‹</button><span class="book-count" id="bookCount"><b>Cover</b></span><button id="next">›</button></div>
+</main>
+
+</div>
+
+<script>
+const DATA=[{"price": 72, "state": "FL", "city": "Jacksonville", "zip": "32216", "provider": "Pham Cardiovascular Center", "address": "8075 Gate Parkway West, Suite 302, Jacksonville, FL 32216", "service": "Treadmill Stress Test", "match": "Strong CPT 93015 match \u2014 plain treadmill", "access": "Open self-pay", "tier": "A", "source": "https://www.phamcvcenter.com/insurances", "lat": 30.3322, "lon": -81.6557, "phone": "(904) 513-3179", "fax": "(904) 337-1641", "email": "", "footprint_note": "1 public clinic location."}, {"price": 100, "state": "TX", "city": "Sugar Land", "zip": "77479", "provider": "Advanced Cardiology", "address": "7102 Tarrington Ave, Suite 505, Sugar Land, TX 77479", "service": "Exercise Stress Test", "match": "Strong CPT 93015 match \u2014 exercise stress", "access": "Open self-pay", "tier": "A", "source": "https://advcardiologytx.com/self-pay-cardiology-care-houston/", "lat": 29.6197, "lon": -95.6349, "phone": "(713) 258-6111", "fax": "", "email": "info@advcardiologytx.com", "footprint_note": "2 public clinic locations."}, {"price": 100, "state": "TX", "city": "Katy", "zip": "77494", "provider": "Advanced Cardiology", "address": "410 W Grand Pkwy S Suite 4D, Katy, TX 77494", "service": "Exercise Stress Test", "match": "Strong CPT 93015 match \u2014 exercise stress", "access": "Open self-pay", "tier": "A", "source": "https://advcardiologytx.com/self-pay-cardiology-houston/", "lat": 29.7858, "lon": -95.8245, "phone": "(713) 258-6111", "fax": "", "email": "info@advcardiologytx.com", "footprint_note": "2 public clinic locations."}, {"price": 100, "state": "TX", "city": "Frisco", "zip": "75033", "provider": "Daffodil Primary Care & Cardio Renal Clinic", "address": "4300 Punjab Way, Building 1, Unit 160, Frisco, TX 75033", "service": "Exercise Stress Test", "match": "Strong CPT 93015 match \u2014 exercise stress", "access": "Cash pay", "tier": "A", "source": "https://www.daffodilclinic.com/cash-pay/", "lat": 33.1507, "lon": -96.8236, "phone": "(469) 649-9968", "fax": "(469) 649-9969", "email": "Email available on provider site", "footprint_note": "2 public clinic locations."}, {"price": 100, "state": "TX", "city": "McKinney", "zip": "75070", "provider": "Daffodil Primary Care & Cardio Renal Clinic", "address": "8720 Silverado Trail, STE 3C, 3D, McKinney, TX 75070", "service": "Exercise Stress Test", "match": "Strong CPT 93015 match \u2014 exercise stress", "access": "Cash pay", "tier": "A", "source": "https://www.daffodilclinic.com/cash-pay/", "lat": 33.1975, "lon": -96.6385, "phone": "(469) 649-9968", "fax": "(469) 649-9969", "email": "Email available on provider site", "footprint_note": "2 public clinic locations."}, {"price": 100, "state": "TX", "city": "McKinney", "zip": "75070", "provider": "Texas One Primary Care", "address": "8720 Silverado Trail, Suite 3D, McKinney, TX 75070", "service": "Exercise Stress Test", "match": "Strong CPT 93015 match \u2014 exercise stress", "access": "Cash pay", "tier": "A", "source": "https://www.texasoneprimarycare.com/copy-of-services", "lat": 33.1958, "lon": -96.641, "phone": "972-752-8118", "fax": "972-752-8338", "email": "info@texasoneprimarycare.com", "footprint_note": "1 public clinic location."}, {"price": 125, "state": "TN", "city": "Greeneville", "zip": "37745", "provider": "Trinity Heart and Vascular Group", "address": "1231 Tusculum Boulevard, Upper Level, Greeneville, TN 37745", "service": "Exercise Treadmill Test", "match": "Very strong CPT 93015 match \u2014 flat treadmill test price", "access": "Self-pay", "tier": "A", "source": "https://trinityheartandvasculargroup.com/price-comparison-chart/", "lat": 36.1632, "lon": -82.831, "phone": "(423) 588-5660", "fax": "(423) 609-7905", "email": "thvg.jane@trinityheartandvasculargroup.com", "footprint_note": "2 public clinic locations."}, {"price": 150, "state": "FL", "city": "Tampa", "zip": "33607", "provider": "Tampa Heart", "address": "2727 W Dr Martin Luther King Jr Blvd #800, Tampa, FL 33607", "service": "Electrocardiogram (EKG) treadmill stress test", "match": "Very strong CPT 93015 match \u2014 treadmill + ECG", "access": "Uninsured / self-pay", "tier": "A", "source": "https://tampa-heart.com/self-pay-cash-price-uninsured-patients/", "lat": 27.9506, "lon": -82.4572, "phone": "(813) 873-0000", "fax": "813-873-3659", "email": "", "footprint_note": "1 public clinic location."}, {"price": 150, "state": "TX", "city": "San Angelo", "zip": "76904", "provider": "Cardiology Associates of West Texas", "address": "3180 Executive Dr #102, San Angelo, TX 76904", "service": "Stress Test - Walking Treadmill", "match": "Strong CPT 93015 match \u2014 walking treadmill", "access": "Cash price", "tier": "A", "source": "https://www.cardiowesttexas.com/testing", "lat": 31.4638, "lon": -100.437, "phone": "(325) 944-1240", "fax": "325-944-8616", "email": "", "footprint_note": "1 public cardiology clinic location."}, {"price": 200, "state": "WA", "city": "Kennewick", "zip": "99336", "provider": "Empowered Health Institute", "address": "8108 W Grandridge Blvd, Kennewick, WA 99336", "service": "Exercise Stress Test", "match": "Probable CPT 93015 match \u2014 exercise test; code not posted", "access": "Existing Empowered patients", "tier": "A-", "source": "https://empoweredhealthinstitute.com/proactive-cardiovascular-testing/", "lat": 46.2112, "lon": -119.1372, "phone": "(509) 392-7047", "fax": "509-436-1944", "email": "", "footprint_note": "1 public clinic location."}, {"price": 210, "state": "PA", "city": "Camp Hill", "zip": "17011", "provider": "Capital Area Cardiovascular Associates", "address": "875 Poplar Church Rd, Suite 300, Camp Hill, PA 17011", "service": "Treadmill (only) stress test", "match": "Very strong CPT 93015 match \u2014 treadmill only", "access": "Self-pay", "tier": "A", "source": "https://www.care-cardiology.com/fees/", "lat": 40.2404, "lon": -76.9185, "phone": "223-225-1120", "fax": "", "email": "", "footprint_note": "2 practice locations referenced publicly."}, {"price": 210, "state": "PA", "city": "Camp Hill", "zip": "17011", "provider": "Cardiovascular Experts of PA", "address": "3040 Market St, Camp Hill, PA 17011", "service": "CPT 93015 Treadmill (Only) Stress Test", "match": "EXPLICIT CPT 93015", "access": "Self-pay", "tier": "A+", "source": "https://cardiovascularexperts.com/pricing/", "lat": 40.2395, "lon": -76.922, "phone": "(717) 727-0480", "fax": "(717) 327-4613", "email": "info@cardiovascularexperts.com", "footprint_note": "1 public headquarters location."}, {"price": 300, "state": "WI", "city": "Mequon", "zip": "53092", "provider": "Wisconsin Cardiology Associates", "address": "11725 N Port Washington Road, Suite 250, Mequon, WI 53092", "service": "Exercise Treadmill Stress Test", "match": "Very strong CPT 93015 match \u2014 exercise treadmill", "access": "Direct-pay cash", "tier": "A", "source": "https://www.wicardiology.com/fee-schedule", "lat": 43.2156, "lon": -87.9845, "phone": "414-207-4333", "fax": "", "email": "info@wicardiology.com", "footprint_note": "1 public clinic location."}, {"price": 400, "state": "FL", "city": "Plantation", "zip": "33313", "provider": "DoctorsCGA", "address": "6738 W Sunrise Blvd, Suite 101, Plantation, FL 33313", "service": "Exercise Treadmill Stress Test", "match": "Strong CPT 93015 match \u2014 treadmill", "access": "Self-pay", "tier": "A", "source": "https://doctorscga.com/self-pay-pricing", "lat": 26.1276, "lon": -80.2331, "phone": "754-778-6706", "fax": "754-778-6935", "email": "info@doctorscga.com", "footprint_note": "1 public cardiology office."}, {"price": 500, "state": "CA", "city": "San Francisco", "zip": "94109", "provider": "Athletic Heart SF", "address": "2000 Van Ness Avenue, Suite 208, San Francisco, CA 94109", "service": "Treadmill Stress Test", "match": "Very strong CPT 93015 match \u2014 treadmill + ECG monitoring", "access": "Direct pay / out-of-network", "tier": "A", "source": "https://www.athleticheartsf.com/services/treadmill-stress-test", "lat": 37.7749, "lon": -122.4194, "phone": "(415) 567-1014", "fax": "", "email": "", "footprint_note": "1 public clinic location."}];
+let map=null,markers=[];
+const mapView=document.getElementById("mapView"),bookView=document.getElementById("bookView"),mapMode=document.getElementById("mapMode"),bookMode=document.getElementById("bookMode"),meta=document.getElementById("meta");
+
+function showView(v){
+ const m=v==="map";mapView.classList.toggle("active",m);bookView.classList.toggle("active",!m);mapMode.classList.toggle("active",m);bookMode.classList.toggle("active",!m);meta.textContent=m?"MapTiler location explorer":"Real page-turn evidence catalogue";if(m&&map)setTimeout(()=>map.resize(),80);if(!m)setTimeout(fitBook,80)
+}
+mapMode.onclick=()=>showView("map");bookMode.onclick=()=>showView("book");
+
+/* MAP */
+const states=[...new Set(DATA.map(d=>d.state))].sort(),stateSel=document.getElementById("mapState");states.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;stateSel.appendChild(o)});
+const money=n=>"$"+Number(n).toLocaleString("en-US");
+function rows(){const q=document.getElementById("mapSearch").value.trim().toLowerCase(),st=stateSel.value,max=Number(document.getElementById("mapPrice").value||99999);return DATA.filter(d=>{const t=[d.provider,d.city,d.state,d.zip,d.service,d.address].join(" ").toLowerCase();return(!q||t.includes(q))&&(!st||d.state===st)&&d.price<=max}).sort((a,b)=>a.price-b.price)}
+function popup(d){return `<div class="popup-card"><div class="popup-price">${money(d.price)}</div><div class="popup-provider">${d.provider}</div><div class="popup-loc">${d.city}, ${d.state} ${d.zip}</div><div class="popup-service">${d.service}<br><b>Tier ${d.tier}</b> · ${d.access}</div><a href="${d.source}" target="_blank" rel="noopener">Open pricing source ↗</a></div>`}
+function clearMarkers(){markers.forEach(m=>{try{m.remove()}catch(e){}});markers=[]}
+function renderMap(){const rr=rows(),host=document.getElementById("mapList");host.innerHTML=rr.map(d=>`<div class="map-item" data-i="${DATA.indexOf(d)}"><div class="price">${money(d.price)}</div><div class="provider">${d.provider}</div><div class="loc">${d.city}, ${d.state} ${d.zip}</div></div>`).join("");host.querySelectorAll(".map-item").forEach(el=>el.onclick=()=>focus(DATA[Number(el.dataset.i)]));if(!map)return;clearMarkers();rr.forEach(d=>{const el=document.createElement("div");el.className="location-marker";const p=new maptilersdk.Popup({offset:18,maxWidth:"320px"}).setHTML(popup(d));markers.push(new maptilersdk.Marker({element:el}).setLngLat([d.lon,d.lat]).setPopup(p).addTo(map))})}
+function focus(d){if(!map)return;map.flyTo({center:[d.lon,d.lat],zoom:9,duration:1100});const rr=rows(),i=rr.findIndex(x=>x===d);if(i>=0&&markers[i])try{markers[i].togglePopup()}catch(e){}}
+function initMap(){const k=localStorage.getItem("cpt93015_maptiler_key")||"";if(!k){document.getElementById("keybox").classList.remove("hidden");renderMap();return}maptilersdk.config.apiKey=k;map=new maptilersdk.Map({container:"locationMap",style:`https://api.maptiler.com/maps/landscape-v4/style.json?key=${encodeURIComponent(k)}`,center:[-98.5,38],zoom:3.1});map.addControl(new maptilersdk.NavigationControl({visualizePitch:true}),"bottom-right");map.on("load",()=>{map.fitBounds([[ -125,24],[-66,50]],{padding:46,duration:700});renderMap()})}
+["mapSearch","mapState","mapPrice"].forEach(id=>document.getElementById(id).addEventListener("input",renderMap));document.getElementById("mapSettings").onclick=()=>document.getElementById("keybox").classList.remove("hidden");document.getElementById("closeKey").onclick=()=>document.getElementById("keybox").classList.add("hidden");document.getElementById("saveKey").onclick=()=>{const k=document.getElementById("keyInput").value.trim();if(!k)return;localStorage.setItem("cpt93015_maptiler_key",k);location.reload()};document.getElementById("keyInput").value=localStorage.getItem("cpt93015_maptiler_key")||"";initMap();
+
+/* SELF-CONTAINED BOOK LOGIC — proven leaf/front/back pattern */
+const flipbook=document.getElementById("flipbook"),leaves=[...document.querySelectorAll(".leaf")],prev=document.getElementById("prev"),next=document.getElementById("next"),count=document.getElementById("bookCount"),jump=document.getElementById("providerJump"),hint=document.getElementById("bookHint");
+let currentPage=0;const maxPage=leaves.length;
+
+function updateBook(){
+ leaves.forEach((leaf,index)=>{
+   if(index<currentPage){leaf.classList.add("flipped");leaf.style.zIndex=index+1}
+   else{leaf.classList.remove("flipped");leaf.style.zIndex=maxPage-index}
+ });
+ flipbook.classList.toggle("open",currentPage>0&&currentPage<maxPage);
+ flipbook.classList.toggle("finished",currentPage===maxPage);
+ prev.disabled=currentPage===0;next.disabled=currentPage===maxPage;
+ count.innerHTML=currentPage===0?"<b>Cover</b>":currentPage===1?"<b>Index</b>":currentPage===maxPage?"<b>Back cover</b>":`<b>${currentPage-1}</b> / 13`;
+ hint.classList.toggle("hide",currentPage>1);
+}
+
+prev.onclick=()=>{if(currentPage>0){currentPage--;updateBook()}};
+next.onclick=()=>{if(currentPage<maxPage){currentPage++;updateBook()}};
+leaves.forEach((leaf,index)=>{
+ const front=leaf.querySelector(".front"),back=leaf.querySelector(".back");
+ front.addEventListener("click",e=>{if(e.target.closest("a,button,input,select"))return;if(index===currentPage){currentPage++;updateBook()}});
+ back.addEventListener("click",e=>{if(e.target.closest("a,button,input,select"))return;if(index===currentPage-1){currentPage--;updateBook()}});
+});
+document.querySelectorAll(".toc-row").forEach(b=>b.onclick=e=>{e.stopPropagation();currentPage=Number(b.dataset.spread);updateBook()});
+jump.onchange=()=>{if(jump.value!==""){currentPage=Number(jump.value);updateBook()}};
+document.addEventListener("keydown",e=>{if(!bookView.classList.contains("active"))return;if(e.key==="ArrowRight"&&currentPage<maxPage){currentPage++;updateBook()}else if(e.key==="ArrowLeft"&&currentPage>0){currentPage--;updateBook()}});
+
+function fitBook(){const space=document.getElementById("bookSpace"),zoom=document.getElementById("bookZoom");if(!space.offsetWidth)return;const scale=Math.min((space.clientWidth-40)/840,(space.clientHeight-34)/580,1.28);zoom.style.transform=`scale(${Math.max(.38,scale)})`}
+window.addEventListener("resize",fitBook);updateBook();setTimeout(fitBook,50);
+</script>
+</body>
+</html>
