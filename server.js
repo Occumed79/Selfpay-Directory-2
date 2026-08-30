@@ -8,6 +8,8 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HTML_FILE = path.join(__dirname, 'Stress_Test_Price_Atlas_EDITORIAL_CATALOGUE_v13.html');
+const SCHEMA_FILE = path.join(__dirname, 'db', 'schema.sql');
+const SEED_FILE = path.join(__dirname, 'db', 'seed_locations.sql');
 const htmlTemplate = fs.readFileSync(HTML_FILE, 'utf8');
 
 if (!process.env.DATABASE_URL) {
@@ -23,6 +25,25 @@ const pool = process.env.DATABASE_URL
       connectionTimeoutMillis: 10000,
     })
   : null;
+
+async function ensureDatabase() {
+  if (!pool) return;
+
+  const schemaSql = fs.readFileSync(SCHEMA_FILE, 'utf8');
+  await pool.query(schemaSql);
+
+  if (fs.existsSync(SEED_FILE)) {
+    const seedSql = fs.readFileSync(SEED_FILE, 'utf8');
+    if (seedSql.trim()) await pool.query(seedSql);
+  }
+
+  const { rows } = await pool.query(`
+    SELECT COUNT(*)::int AS location_count,
+           COUNT(DISTINCT provider)::int AS provider_count
+    FROM stress_test_locations
+  `);
+  console.log(`Neon registry ready: ${rows[0].location_count} locations / ${rows[0].provider_count} providers`);
+}
 
 function rowsToFrontend(rows) {
   return rows.map((r) => ({
@@ -150,12 +171,28 @@ app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Stress Test Price Atlas listening on port ${PORT}`);
-});
+let server;
+
+async function start() {
+  if (pool) {
+    try {
+      await ensureDatabase();
+    } catch (error) {
+      console.error('Neon bootstrap failed; app will continue with fallback data:', error.message);
+    }
+  }
+
+  server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Stress Test Price Atlas listening on port ${PORT}`);
+  });
+}
 
 async function shutdown(signal) {
   console.log(`${signal} received; shutting down.`);
+  if (!server) {
+    if (pool) await pool.end().catch(() => {});
+    process.exit(0);
+  }
   server.close(async () => {
     if (pool) await pool.end().catch(() => {});
     process.exit(0);
@@ -164,3 +201,8 @@ async function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+start().catch((error) => {
+  console.error('Fatal startup error:', error);
+  process.exit(1);
+});
