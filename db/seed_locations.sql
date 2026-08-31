@@ -126,6 +126,26 @@ VALUES
     NOW()
   ),
   (
+    'Cleveland Clinic Executive Health',
+    'Cleveland',
+    'OH',
+    '44195',
+    '9500 Euclid Avenue, Cleveland, OH 44195',
+    860,
+    'Exercise Stress Test',
+    'Cleveland Clinic Executive Health self-pay fee schedule lists Exercise stress test — $860',
+    'Executive Health self-pay; discounted for self-payors and not billable to insurance; dependent upon age and/or risk factors',
+    'A-',
+    'https://my.clevelandclinic.org/-/scassets/files/org/wellness/executive-health/2024-self-pay-fee-schedule',
+    NULL,
+    NULL,
+    '216-444-5707',
+    NULL,
+    'exechealth@ccf.org',
+    'Cleveland Clinic Main Campus Executive Health. The provider-hosted self-pay schedule remains live and lists the exercise stress test at $860; the document is labeled 2024, so source year is preserved in this note.',
+    NOW()
+  ),
+  (
     'Cutchins Cardiovascular Medicine',
     'New York',
     'NY',
