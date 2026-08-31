@@ -143,6 +143,26 @@ VALUES
     'pm@harvardcardiovascular.com',
     'Harvard Cardiovascular publishes four PA/NJ offices and offers in-person stress testing; exact testing site should be confirmed when booking. This row conservatively uses the Philadelphia office.',
     NOW()
+  ),
+  (
+    'Antonio Rosado, M.D. Clinical and Interventional Cardiology',
+    'Miami Beach',
+    'FL',
+    '33140',
+    '4302 Alton Road, Suite 470, Miami Beach, FL 33140',
+    250,
+    'Exercise Stress Test (Plain Treadmill)',
+    'Self-pay Exercise stress test (plain treadmill) — $250; nuclear imaging and stress echocardiogram are listed separately',
+    'Self-pay; in-office cardiac testing',
+    'Direct provider self-pay price',
+    'https://www.drrosadocardiologist.com/fix',
+    NULL,
+    NULL,
+    '786-709-5865',
+    '305-397-8889',
+    NULL,
+    'Active Miami Beach cardiology practice. Current practice site states in-house cardiac testing and competitive pricing for patients without insurance.',
+    NOW()
   )
 ON CONFLICT (provider, city, state, zip, service, price)
 DO UPDATE SET
