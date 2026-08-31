@@ -103,6 +103,46 @@ VALUES
     'info@advancedheartnm.com',
     'Advanced Heart and Vascular Center of New Mexico; direct self-pay schedule dated May 1, 2025.',
     NOW()
+  ),
+  (
+    'Cardiovascular Interventions, P.A.',
+    'Orlando',
+    'FL',
+    '32803',
+    '1900 North Mills Avenue, Orlando, FL 32803',
+    140,
+    'Regular Stress Test',
+    'Direct self-pay Regular Stress Test — $140; provider stress-test lab page defines the regular stress test as treadmill walking until target heart rate',
+    'Self-pay cash rate; in-office treadmill stress test',
+    'Direct provider self-pay price',
+    'https://orlandocvi.com/patient-resources/self-pay-rates-at-cvi/',
+    NULL,
+    NULL,
+    '(407) 894-4880',
+    '(407) 894-2364',
+    NULL,
+    'Current Orlando cardiovascular clinic. The live self-pay page lists Regular Stress Test at $140 and the practice stress-test lab page confirms it is treadmill exercise. The pricing table notes rates up to date as of 03-24.',
+    NOW()
+  ),
+  (
+    'Harvard Cardiovascular',
+    'Philadelphia',
+    'PA',
+    '19107',
+    '235 N Broad St, 3rd Floor, Philadelphia, PA 19107',
+    275,
+    'Exercise Stress Test',
+    'Exercise Stress Test — $275; treadmill with EKG; testing, interpretation and report included',
+    'Self-pay; new patient consultation required',
+    'Direct provider self-pay price',
+    'https://harvardcardiovascular.com/product/exercise-stress-test/',
+    NULL,
+    NULL,
+    '610-332-9207',
+    '215-604-7954',
+    'pm@harvardcardiovascular.com',
+    'Harvard Cardiovascular publishes four PA/NJ offices and offers in-person stress testing; exact testing site should be confirmed when booking. This row conservatively uses the Philadelphia office.',
+    NOW()
   )
 ON CONFLICT (provider, city, state, zip, service, price)
 DO UPDATE SET
