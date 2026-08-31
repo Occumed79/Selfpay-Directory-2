@@ -8,8 +8,8 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HTML_FILE = path.join(__dirname, 'Stress_Test_Price_Atlas_EDITORIAL_CATALOGUE_v13.html');
-const SCHEMA_FILE = path.join(__dirname, 'db', 'schema.sql');
-const SEED_FILE = path.join(__dirname, 'db', 'seed_locations.sql');
+const DB_DIR = path.join(__dirname, 'db');
+const SCHEMA_FILE = path.join(DB_DIR, 'schema.sql');
 const htmlTemplate = fs.readFileSync(HTML_FILE, 'utf8');
 
 if (!process.env.DATABASE_URL) {
@@ -26,15 +26,27 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
+function getSeedFiles() {
+  if (!fs.existsSync(DB_DIR)) return [];
+  return fs.readdirSync(DB_DIR)
+    .filter((name) => /^seed_locations.*\.sql$/i.test(name))
+    .sort()
+    .map((name) => path.join(DB_DIR, name));
+}
+
 async function ensureDatabase() {
   if (!pool) return;
 
   const schemaSql = fs.readFileSync(SCHEMA_FILE, 'utf8');
   await pool.query(schemaSql);
 
-  if (fs.existsSync(SEED_FILE)) {
-    const seedSql = fs.readFileSync(SEED_FILE, 'utf8');
-    if (seedSql.trim()) await pool.query(seedSql);
+  const seedFiles = getSeedFiles();
+  for (const seedFile of seedFiles) {
+    const seedSql = fs.readFileSync(seedFile, 'utf8');
+    if (seedSql.trim()) {
+      await pool.query(seedSql);
+      console.log(`Applied registry seed: ${path.basename(seedFile)}`);
+    }
   }
 
   const { rows } = await pool.query(`
