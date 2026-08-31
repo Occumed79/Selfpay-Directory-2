@@ -163,6 +163,26 @@ VALUES
     NULL,
     'Active Miami Beach cardiology practice. Current practice site states in-house cardiac testing and competitive pricing for patients without insurance.',
     NOW()
+  ),
+  (
+    'Cutchins Cardiovascular Medicine',
+    'New York',
+    'NY',
+    '10022',
+    '30 E 60th St, Suite 1205, New York, NY 10022',
+    1250,
+    'Exercise Treadmill Test',
+    'Exercise Treadmill Test — $1,250; evaluates ischemic heart disease, heart-rate response and exercise tolerance',
+    'Direct-pay practice; does not accept insurance',
+    'Direct provider posted price',
+    'https://cutchinscvm.com/pricing-1',
+    NULL,
+    NULL,
+    '212-599-3029',
+    '212-904-0979',
+    'scheduling@cutchinscvm.com',
+    'Current NYC cardiovascular clinic. Provider FAQ explicitly states the practice does not accept insurance, and its diagnostic-services page confirms in-office treadmill testing.',
+    NOW()
   )
 ON CONFLICT (provider, city, state, zip, service, price)
 DO UPDATE SET
