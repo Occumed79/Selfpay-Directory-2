@@ -183,6 +183,26 @@ VALUES
     'scheduling@cutchinscvm.com',
     'Current NYC cardiovascular clinic. Provider FAQ explicitly states the practice does not accept insurance, and its diagnostic-services page confirms in-office treadmill testing.',
     NOW()
+  ),
+  (
+    'West Michigan Cardiology',
+    'Grand Rapids',
+    'MI',
+    '49525',
+    '3210 Eagle Run Dr NE, Grand Rapids, MI 49525',
+    150,
+    'Treadmill EKG Stress Test',
+    'Individual screening test: Treadmill EKG Stress Test — $150',
+    'Cash-pay cardiovascular screening; no insurance claim, referral, or prior authorization required',
+    'Direct provider cash-pay price',
+    'https://westmichigancardiology.org/screening-packages',
+    NULL,
+    NULL,
+    '616-456-9553',
+    '616-454-5371',
+    'wmc.billing@wmcardiology.com',
+    'Current West Michigan Cardiology screening program. Grand Rapids is used conservatively as the documented screening/testing hub; payment is due at screening and the program states no insurance claim will be filed.',
+    NOW()
   )
 ON CONFLICT (provider, city, state, zip, service, price)
 DO UPDATE SET
